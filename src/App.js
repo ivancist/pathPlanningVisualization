@@ -1,6 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import axios from 'axios';
-import Scene, {Nodes} from "./components/ThreeScene";
+import Scene from "./components/ThreeScene";
 import useWebSocket, {ReadyState} from 'react-use-websocket';
 import binaryDataToVoxels, {decodeMessage} from './utils/converter.js';
 import * as THREE from 'three';
@@ -17,6 +17,9 @@ export default function App() {
     const [nodes, setNodes] = useState([]);
     const [endpoints, setEndpoints] = useState({});
     const [chronoPath, setChronoPath] = useState([])
+    const [completed, setCompleted] = useState(false)
+    const [optPath, setOptPath] = useState({path: [], cost: -1})
+    const [smoothPath, setSmoothPath] = useState({path: [], cost: -1})
 
     const {sendMessage, getWebSocket, readyState} = useWebSocket(WS_URL, {
         onOpen: () => {
@@ -30,6 +33,15 @@ export default function App() {
             }
             if (endpoints.hasOwnProperty('start')) {
                 setEndpoints({})
+            }
+            if (completed) {
+                setCompleted(false)
+            }
+            if (optPath.path.length > 0) {
+                setOptPath({path: [], cost: -1})
+            }
+            if (smoothPath.path.length > 0) {
+                setSmoothPath({path: [], cost: -1})
             }
         },
         onClose: () => console.log('WebSocket connection closed.'),
@@ -46,13 +58,29 @@ export default function App() {
             } else if (msg.topic === 'octomap_path') {
                 const nodes = JSON.parse(new TextDecoder('utf-8').decode(msg.binaryData));
                 console.log("Path received")
+                console.log(nodes.path)
                 setNodes(nodes.path);
-                setChronoPath(chronoPath => [...chronoPath, nodes.time])
+                if (nodes.time) {
+                    setChronoPath(chronoPath => [...chronoPath, nodes.time])
+                }
             } else if (msg.topic === 'octomap_endpoints') {
                 const endpoints = JSON.parse(new TextDecoder('utf-8').decode(msg.binaryData));
                 console.log("Endpoints received")
                 setEndpoints(endpoints);
-            } else {
+            } else if (msg.topic === 'octomap_completed') {
+                const completed = JSON.parse(new TextDecoder('utf-8').decode(msg.binaryData));
+                console.log("Path Planning completed")
+                setCompleted(completed);
+                setNodes(completed.path)
+            } else if(msg.topic === 'octomap_optimized_path'){
+                const optPath = JSON.parse(new TextDecoder('utf-8').decode(msg.binaryData));
+                console.log("Optimal Path received")
+                setOptPath(optPath)
+            } else if(msg.topic === 'octomap_smoothed_path'){
+                const smoothPath = JSON.parse(new TextDecoder('utf-8').decode(msg.binaryData));
+                console.log("Smooth Path received")
+                setSmoothPath(smoothPath)
+            }else {
                 console.log('Received message:', msg);
             }
 
@@ -120,10 +148,14 @@ export default function App() {
                 <br/>
                 <p>Path received: {chronoPath.length}</p>
                 {chronoPath.length > 0 ? <p>First contact: {chronoPath[0].toLocaleString()} microseconds</p> : null}
-                {chronoPath.length > 1 ? <p>Last contact: {chronoPath[chronoPath.length - 1].toLocaleString()} microseconds</p> : null}
+                {chronoPath.length > 1 ?
+                    <p>Last contact: {chronoPath[chronoPath.length - 1].toLocaleString()} microseconds and {nodes.length} nodes</p> : null}
+                {completed ? <p>Path Planning completed with: {completed.num_nodes} nodes in {completed.time.toLocaleString()} microseconds and a cost of {completed.cost}</p> : null}
+                {optPath.path.length > 0 ? <p>Optimal Path received with: {optPath.path.length} nodes and cost of {optPath.cost}</p> : null}
+{smoothPath.path.length > 0 ? <p>Smooth Path received with: {smoothPath.path.length} nodes and cost of {smoothPath.cost}</p> : null}
             </header>
             <Canvas style={{position: "absolute", inset: 0, zIndex: -1}}>
-                <Scene connection={readyState} voxels={voxels} endpoints={endpoints} nodes={nodes}/>
+                <Scene connection={readyState} voxels={voxels} endpoints={endpoints} nodes={nodes} optPath={optPath.path} smoothPath={smoothPath.path} />
             </Canvas>
 
         </div>

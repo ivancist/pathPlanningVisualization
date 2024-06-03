@@ -12,7 +12,7 @@ export function Octomap({voxels}) {
         roughness: 0.5,
         metalness: 0.2,
         side: THREE.DoubleSide,
-        // flatShading: true,
+        flatShading: true,
     })
     const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
 

@@ -31,7 +31,7 @@ export function Grid() {
     return null;
 }
 
-const Scene = ({connection, voxels, endpoints, nodes}) => {
+const Scene = ({connection, voxels, endpoints, nodes, optPath, smoothPath}) => {
     return (<group>
             <ambientLight intensity={1}/>
             <directionalLight position={[30, 30, -30]} intensity={1}/>
@@ -39,7 +39,9 @@ const Scene = ({connection, voxels, endpoints, nodes}) => {
             <group>
                 <Octomap voxels={voxels}/>
                 {endpoints.hasOwnProperty('start') ? <Nodes nodes={endpoints}/> : null}
-                {nodes.length > 0 ? <Path nodes={nodes}/> : null}
+                {nodes.length > 0 ? <Path nodes={nodes} color={new THREE.Color(0x00a86b)}/> : null}
+                {optPath.length > 0 ? <Path nodes={optPath} color={new THREE.Color(0x1E90FF)}/> : null}
+                {smoothPath.length > 0 ? <Path nodes={smoothPath} color={"blue"}/> : null}
             </group>
                 : null}
             <Grid/>
